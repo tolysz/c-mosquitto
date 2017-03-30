@@ -1,6 +1,12 @@
 module Main where
 
-import Lib
+import qualified Network.Mosquitto as M
 
 main :: IO ()
-main = someFunc
+main = M.withMosquittoLibrary $ do
+  print "Some Action"
+  print M.version
+  m <- M.newMosquitto False Nothing Nothing
+
+  M.destroyMosquitto m
+  print "The end"
