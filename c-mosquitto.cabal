@@ -1,6 +1,6 @@
 name:                c-mosquitto
 version:             0.1.0.0
--- synopsis:
+synopsis:            Simpe mosquito MQTT binding able to work with the Amazons IoT
 -- description:
 homepage:            https://github.com/tolysz/c-mosquitto#readme
 license:             BSD3
@@ -20,7 +20,6 @@ library
           Network.Mosquitto.Internal.Types
           Network.Mosquitto.Internal.Inline
           Language.C.Inline.TypeLevel
-
 
   build-depends:       base >= 4.7 && < 5
                      , inline-c

@@ -42,7 +42,7 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   M.setTlsInsecure m True
 
   M.onMessage m print
-  M.onLog m $ const print
+  M.onLog m $ const putStrLn
   M.onConnect m print
   M.onDisconnect m print
   M.onSubscribe m $ curry print
