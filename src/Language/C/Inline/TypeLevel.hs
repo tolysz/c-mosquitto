@@ -40,6 +40,9 @@ instance (WithPtr a) => WithPtr (Maybe a) where
     withPtr Nothing    f = f nullPtr
     withPtr (Just obj) f = withPtr obj f
 
+-- instance WithPtr () where
+--     withPtr ptr f = f ptr
+
 -- | Mutable types use the same underlying representation as unmutable types.
 instance (WithPtr a) => WithPtr (Mut a s) where
     withPtr = withPtr . unMut

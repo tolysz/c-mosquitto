@@ -21,4 +21,4 @@ src/**/*.c
 .stack-work/
 cabal.project.local
 .HTF/
-
+crt/
