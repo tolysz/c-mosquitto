@@ -97,10 +97,10 @@ setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
                                 )
        }|]
 
-connect :: Mosquitto a -> String -> Int -> Int -> IO ()
+connect :: Mosquitto a -> String -> Int -> Int -> IO Int
 connect mosq (C8.pack -> hostname) (fromIntegral -> port) (fromIntegral -> keepAlive) =
-  withPtr mosq $ \pMosq ->
-       [C.exp|void{
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
                mosquitto_connect( $(struct mosquitto *pMosq)
                                 , $bs-ptr:hostname
                                 , $(int port)

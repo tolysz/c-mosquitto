@@ -14,6 +14,7 @@ data MainOptions = MainOptions
     , userCert  :: String
     , userKey   :: String
     , server    :: String
+    , serverName :: String
     , port      :: Int
     , keepAlive :: Int
     }
@@ -27,7 +28,9 @@ instance Options MainOptions where
         <*> simpleOption "key" "cert.key"
             "client key"
         <*> simpleOption "server" "localhost"
-            "client key"
+            "server"
+        <*> simpleOption "name" "server-demo"
+            "server's name"
         <*> simpleOption "port" 8883
             "server's port"
         <*> simpleOption "keep-alive" 1200
@@ -37,23 +40,25 @@ main :: IO ()
 main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   print M.version
 
-  m <- M.newMosquitto True "server" (Just ())
+  m <- M.newMosquitto True serverName (Just ())
   M.setTls m caCert userCert userKey
   M.setTlsInsecure m True
 
   M.onMessage m print
   M.onLog m $ const putStrLn
-  M.onConnect m print
+  M.onConnect m $ \c -> do
+           print c
+           M.subscribe m 0 "#"
+
   M.onDisconnect m print
   M.onSubscribe m $ curry print
 
   M.connect m server port keepAlive
 
-  M.subscribe m 0 "rcv/#"
 
-  forkIO $ forever $ do
-    M.publish m False 0 "hello" "bla"
-    threadDelay 5000000
+--  forkIO $ forever $ do
+--    M.publish m False 0 "hello" "bla"
+--    threadDelay 5000000
 
   M.loopForever m
   M.destroyMosquitto m
