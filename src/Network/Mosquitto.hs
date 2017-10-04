@@ -70,12 +70,16 @@ version = unsafePerformIO $
 
 newMosquitto :: Bool -> String -> Maybe a -> IO (Mosquitto a)
 newMosquitto clearSession (C8.pack -> userId) _userData = do
-   fp <- newForeignPtr_ <$> [C.exp|struct mosquitto *{
-        mosquitto_new( $bs-ptr:userId
-                     , $(bool clearSession)
-                     , 0 // (void * ptrUserData)
-                     )
-         }|]
+   fp <- newForeignPtr_ <$> [C.block|struct mosquitto *{
+        struct mosquitto * p =
+          mosquitto_new( $bs-ptr:userId
+                       , $(bool clearSession)
+                       , 0 // (void * ptrUserData)
+                       );
+        mosquitto_threaded_set(p, true);
+        return p;
+      }|]
+
    Mosquitto <$> fp
 
 destroyMosquitto :: Mosquitto a -> IO ()

@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Main where
 
+import           Control.Concurrent
+import           Control.Monad
 import qualified Network.Mosquitto as M
-import Network.Mosquitto.Internal.Types
-import Control.Concurrent
-import Control.Monad
+import           Network.Mosquitto.Internal.Types
 
-import Control.Applicative
-import Options
+import           Control.Applicative
+import           Options
 
 data MainOptions = MainOptions
     { caCert    :: String
@@ -55,10 +55,9 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
 
   M.connect m server port keepAlive
 
-
---  forkIO $ forever $ do
---    M.publish m False 0 "hello" "bla"
---    threadDelay 5000000
+  forkIO $ forever $ do
+    M.publish m False 0 "hello" "bla"
+    threadDelay 5000000
 
   M.loopForever m
   M.destroyMosquitto m
