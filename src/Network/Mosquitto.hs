@@ -101,6 +101,23 @@ setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
                                 )
        }|]
 
+setReconnectDelay 
+  :: Mosquitto a -- ^ mosquitto instance
+  -> Bool        -- ^ exponential backoff
+  -> Int         -- ^ initial backoff 
+  -> Int         -- ^ maximum backoff
+  -> IO Int
+setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegral -> reconnectDelayMax) =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
+             mosquitto_reconnect_delay_set
+               ( $(struct mosquitto *pMosq)
+               , $(int reconnectDelay)
+               , $(int reconnectDelayMax)
+               , $(bool exponential)
+               )
+        }|]
+
 connect :: Mosquitto a -> String -> Int -> Int -> IO Int
 connect mosq (C8.pack -> hostname) (fromIntegral -> port) (fromIntegral -> keepAlive) =
   fmap fromIntegral <$> withPtr mosq $ \pMosq ->
@@ -183,6 +200,26 @@ setTlsInsecure mosq isInsecure =
              mosquitto_tls_insecure_set($(struct mosquitto *pMosq), $(bool isInsecure))
         }|]
 
+setWill :: Mosquitto a -> Bool -> Int -> String -> S.ByteString -> IO Int
+setWill mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
+             mosquitto_will_set
+               ( $(struct mosquitto *pMosq)
+               , $bs-ptr:topic
+               , $bs-len:payload
+               , $bs-ptr:payload
+               , $(int qos)
+               , $(bool retain)
+               )
+        }|]
+
+clearWill :: Mosquitto a -> IO Int
+clearWill mosq = fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
+             mosquitto_will_clear($(struct mosquitto *pMosq))
+        }|]
+
 publish :: Mosquitto a -> Bool -> Int -> String -> S.ByteString -> IO ()
 publish mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
   withPtr mosq $ \pMosq ->
@@ -209,3 +246,4 @@ subscribe mosq (fromIntegral -> qos) (C8.pack -> topic) =
                , $(int qos)
                )
         }|]
+
