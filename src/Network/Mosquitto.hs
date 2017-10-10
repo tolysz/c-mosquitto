@@ -7,7 +7,9 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Network.Mosquitto where
+module Network.Mosquitto
+  ( module Network.Mosquitto )
+where
 
 import           Data.Coerce (coerce)
 import           Data.Monoid ((<>))
@@ -32,6 +34,8 @@ import qualified Data.ByteString.Unsafe as BS
 import           Network.Mosquitto.Internal.Types
 import           Network.Mosquitto.Internal.Inline
 import           Foreign.Storable
+
+import           Network.Mosquitto.Internal.Types as Network.Mosquitto (Message(..))
 
 C.context (C.baseCtx <> C.vecCtx <> C.funCtx <> mosquittoCtx)
 C.include "<stdio.h>"
