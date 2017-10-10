@@ -118,6 +118,30 @@ setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegr
                )
         }|]
 
+setUsernamePassword
+  :: Mosquitto a
+  -> Maybe (String,String)
+  -> IO Int
+setUsernamePassword mosq mUserPwd =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+    case mUserPwd of
+      Just (C8.pack -> user, C8.pack -> pwd) ->
+        [C.exp|int{
+                mosquitto_username_pw_set
+                  ( $(struct mosquitto *pMosq)
+                  , $bs-ptr:user
+                  , $bs-ptr:pwd
+                  )
+        }|]
+      Nothing ->
+        [C.exp|int{
+                mosquitto_username_pw_set
+                  ( $(struct mosquitto *pMosq)
+                  , NULL
+                  , NULL
+                  )
+        }|]
+
 connect :: Mosquitto a -> String -> Int -> Int -> IO Int
 connect mosq (C8.pack -> hostname) (fromIntegral -> port) (fromIntegral -> keepAlive) =
   fmap fromIntegral <$> withPtr mosq $ \pMosq ->
