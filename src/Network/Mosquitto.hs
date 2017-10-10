@@ -92,18 +92,24 @@ destroyMosquitto ms = withPtr ms $ \ptr ->
          mosquitto_destroy($(struct mosquitto *ptr))
      }|]
 
-setTls :: Mosquitto a -> String -> String -> String -> IO ()
-setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
-  withPtr mosq $ \pMosq ->
-       [C.exp|void{
-               mosquitto_tls_set( $(struct mosquitto *pMosq)
-                                , $bs-ptr:caFile
-                                , 0
-                                , $bs-ptr:certFile
-                                , $bs-ptr:keyFile
-                                , 0
-                                )
-       }|]
+setTls :: Mosquitto a -> String -> Maybe (String, String) -> IO ()
+setTls mosq (C8.pack -> caFile) userCert =
+  withPtr mosq $ \pMosq -> do
+    (certFile, keyFile) <- case userCert of
+      Just (C8.pack -> certFile, C8.pack -> keyFile) ->
+        (,) <$> [C.exp| char* {$bs-ptr:certFile} |]
+            <*> [C.exp| char* {$bs-ptr:keyFile}  |]
+      Nothing ->
+        return (nullPtr, nullPtr)
+    [C.exp|void{
+            mosquitto_tls_set( $(struct mosquitto *pMosq)
+                            , $bs-ptr:caFile
+                            , 0
+                            , $(char* certFile)
+                            , $(char* keyFile)
+                            , 0
+                            )
+    }|]
 
 setReconnectDelay
   :: Mosquitto a -- ^ mosquitto instance
