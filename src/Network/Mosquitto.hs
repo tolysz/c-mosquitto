@@ -35,7 +35,7 @@ import           Network.Mosquitto.Internal.Types
 import           Network.Mosquitto.Internal.Inline
 import           Foreign.Storable
 
-import           Network.Mosquitto.Internal.Types as Network.Mosquitto (Message(..))
+import           Network.Mosquitto.Internal.Types as Network.Mosquitto (Mosquitto, Message(..))
 
 C.context (C.baseCtx <> C.vecCtx <> C.funCtx <> mosquittoCtx)
 C.include "<stdio.h>"
