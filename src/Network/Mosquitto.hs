@@ -186,6 +186,13 @@ onMessage mosq onMessage =  do
             );
        }|]
 
+loop :: Mosquitto a -> IO ()
+loop mosq =
+  withPtr mosq $ \pMosq ->
+    [C.exp|void{
+             mosquitto_loop($(struct mosquitto *pMosq), -1, 1)
+        }|]
+
 loopForever :: Mosquitto a -> IO ()
 loopForever mosq =
   withPtr mosq $ \pMosq ->
