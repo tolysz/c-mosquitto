@@ -186,6 +186,17 @@ onMessage mosq onMessage =  do
             );
        }|]
 
+onPublish :: Mosquitto a -> OnPublish -> IO ()
+onPublish mosq onPublish =  do
+  on_publish <- mkCOnPublish $ \_ _ mid -> onPublish (fromIntegral mid)
+  withPtr mosq $ \pMosq ->
+     [C.block|void{
+        mosquitto_publish_callback_set
+            ( $(struct mosquitto *pMosq)
+            , $(void (*on_publish)(struct mosquitto *,void *, int))
+            );
+       }|]
+
 loop :: Mosquitto a -> IO ()
 loop mosq =
   withPtr mosq $ \pMosq ->

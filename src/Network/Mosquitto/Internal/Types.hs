@@ -69,3 +69,8 @@ type OnSubscribe = Int -> [Int] -> IO ()
 type COnSubscribe = Ptr C'Mosquitto ->  Ptr () -> CInt -> CInt -> Ptr CInt -> IO ()
 foreign import ccall "wrapper"
   mkCOnSubscribe :: COnSubscribe -> IO (FunPtr COnSubscribe)
+
+type OnPublish = Int -> IO ()
+type COnPublish = Ptr C'Mosquitto -> Ptr () -> CInt -> IO ()
+foreign import ccall "wrapper"
+  mkCOnPublish :: COnPublish -> IO (FunPtr COnPublish)
