@@ -29,3 +29,7 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   M.destroyMosquitto m
   print "The end"
 ```
+
+# Hacking
+
+Documentation for used C library can be found at <https://mosquitto.org/api/files/mosquitto-h.html>.

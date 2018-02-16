@@ -101,10 +101,10 @@ setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
                                 )
        }|]
 
-setReconnectDelay 
+setReconnectDelay
   :: Mosquitto a -- ^ mosquitto instance
   -> Bool        -- ^ exponential backoff
-  -> Int         -- ^ initial backoff 
+  -> Int         -- ^ initial backoff
   -> Int         -- ^ maximum backoff
   -> IO Int
 setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegral -> reconnectDelayMax) =
@@ -183,6 +183,17 @@ onMessage mosq onMessage =  do
         mosquitto_message_callback_set
             ( $(struct mosquitto *pMosq)
             , $(void (*on_message)(struct mosquitto *, void *, const struct mosquitto_message *))
+            );
+       }|]
+
+onPublish :: Mosquitto a -> OnPublish -> IO ()
+onPublish mosq onPublish =  do
+  on_publish <- mkCOnPublish $ \_ _ mid -> onPublish (fromIntegral mid)
+  withPtr mosq $ \pMosq ->
+     [C.block|void{
+        mosquitto_publish_callback_set
+            ( $(struct mosquitto *pMosq)
+            , $(void (*on_publish)(struct mosquitto *,void *, int))
             );
        }|]
 
