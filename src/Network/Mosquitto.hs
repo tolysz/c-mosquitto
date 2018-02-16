@@ -101,10 +101,10 @@ setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
                                 )
        }|]
 
-setReconnectDelay 
+setReconnectDelay
   :: Mosquitto a -- ^ mosquitto instance
   -> Bool        -- ^ exponential backoff
-  -> Int         -- ^ initial backoff 
+  -> Int         -- ^ initial backoff
   -> Int         -- ^ maximum backoff
   -> IO Int
 setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegral -> reconnectDelayMax) =
