@@ -7,7 +7,9 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Network.Mosquitto where
+module Network.Mosquitto
+  ( module Network.Mosquitto )
+where
 
 import           Data.Coerce (coerce)
 import           Data.Monoid ((<>))
@@ -32,6 +34,8 @@ import qualified Data.ByteString.Unsafe as BS
 import           Network.Mosquitto.Internal.Types
 import           Network.Mosquitto.Internal.Inline
 import           Foreign.Storable
+
+import           Network.Mosquitto.Internal.Types as Network.Mosquitto (Mosquitto, Message(..))
 
 C.context (C.baseCtx <> C.vecCtx <> C.funCtx <> mosquittoCtx)
 C.include "<stdio.h>"
@@ -88,18 +92,24 @@ destroyMosquitto ms = withPtr ms $ \ptr ->
          mosquitto_destroy($(struct mosquitto *ptr))
      }|]
 
-setTls :: Mosquitto a -> String -> String -> String -> IO ()
-setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
-  withPtr mosq $ \pMosq ->
-       [C.exp|void{
-               mosquitto_tls_set( $(struct mosquitto *pMosq)
-                                , $bs-ptr:caFile
-                                , 0
-                                , $bs-ptr:certFile
-                                , $bs-ptr:keyFile
-                                , 0
-                                )
-       }|]
+setTls :: Mosquitto a -> String -> Maybe (String, String) -> IO ()
+setTls mosq (C8.pack -> caFile) userCert =
+  withPtr mosq $ \pMosq -> do
+    (certFile, keyFile) <- case userCert of
+      Just (C8.pack -> certFile, C8.pack -> keyFile) ->
+        (,) <$> [C.exp| char* {$bs-ptr:certFile} |]
+            <*> [C.exp| char* {$bs-ptr:keyFile}  |]
+      Nothing ->
+        return (nullPtr, nullPtr)
+    [C.exp|void{
+            mosquitto_tls_set( $(struct mosquitto *pMosq)
+                            , $bs-ptr:caFile
+                            , 0
+                            , $(char* certFile)
+                            , $(char* keyFile)
+                            , 0
+                            )
+    }|]
 
 setReconnectDelay
   :: Mosquitto a -- ^ mosquitto instance
@@ -116,6 +126,30 @@ setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegr
                , $(int reconnectDelayMax)
                , $(bool exponential)
                )
+        }|]
+
+setUsernamePassword
+  :: Mosquitto a
+  -> Maybe (String,String)
+  -> IO Int
+setUsernamePassword mosq mUserPwd =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+    case mUserPwd of
+      Just (C8.pack -> user, C8.pack -> pwd) ->
+        [C.exp|int{
+                mosquitto_username_pw_set
+                  ( $(struct mosquitto *pMosq)
+                  , $bs-ptr:user
+                  , $bs-ptr:pwd
+                  )
+        }|]
+      Nothing ->
+        [C.exp|int{
+                mosquitto_username_pw_set
+                  ( $(struct mosquitto *pMosq)
+                  , NULL
+                  , NULL
+                  )
         }|]
 
 connect :: Mosquitto a -> String -> Int -> Int -> IO Int
