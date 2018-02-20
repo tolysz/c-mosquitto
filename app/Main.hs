@@ -41,7 +41,7 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   print M.version
 
   m <- M.newMosquitto True serverName (Just ())
-  M.setTls m caCert userCert userKey
+  M.setTls m caCert (Just (userCert, userKey))
   M.setTlsInsecure m True
   M.setReconnectDelay m True 2 30
 

@@ -7,16 +7,19 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Network.Mosquitto where
+module Network.Mosquitto
+  ( module Network.Mosquitto )
+where
 
+import           Control.Monad
+import           Data.Char (chr)
 import           Data.Coerce (coerce)
 import           Data.Monoid ((<>))
-import           Control.Monad
+import           Foreign.C.String (peekCString, peekCStringLen)
 import           Foreign.C.Types
 import           Foreign.ForeignPtr (ForeignPtr, withForeignPtr, newForeignPtr_)
-import           Foreign.Ptr ( Ptr, nullPtr, castPtr, FunPtr)
 import           Foreign.Marshal.Alloc ( alloca )
-import           Foreign.C.String (peekCString, peekCStringLen)
+import           Foreign.Ptr ( Ptr, nullPtr, castPtr, FunPtr)
 
 import qualified Language.C.Inline as C
 import qualified Language.C.Inline.Unsafe as CU
@@ -32,6 +35,8 @@ import qualified Data.ByteString.Unsafe as BS
 import           Network.Mosquitto.Internal.Types
 import           Network.Mosquitto.Internal.Inline
 import           Foreign.Storable
+
+import           Network.Mosquitto.Internal.Types as Network.Mosquitto (Mosquitto, Message(..))
 
 C.context (C.baseCtx <> C.vecCtx <> C.funCtx <> mosquittoCtx)
 C.include "<stdio.h>"
@@ -69,7 +74,7 @@ version = unsafePerformIO $
    peek' x = fromIntegral <$> peek x
 
 newMosquitto :: Bool -> String -> Maybe a -> IO (Mosquitto a)
-newMosquitto clearSession (C8.pack -> userId) _userData = do
+newMosquitto clearSession (nullTermStr -> userId) _userData = do
    fp <- newForeignPtr_ <$> [C.block|struct mosquitto *{
         struct mosquitto * p =
           mosquitto_new( $bs-ptr:userId
@@ -88,18 +93,24 @@ destroyMosquitto ms = withPtr ms $ \ptr ->
          mosquitto_destroy($(struct mosquitto *ptr))
      }|]
 
-setTls :: Mosquitto a -> String -> String -> String -> IO ()
-setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
-  withPtr mosq $ \pMosq ->
-       [C.exp|void{
-               mosquitto_tls_set( $(struct mosquitto *pMosq)
-                                , $bs-ptr:caFile
-                                , 0
-                                , $bs-ptr:certFile
-                                , $bs-ptr:keyFile
-                                , 0
-                                )
-       }|]
+setTls :: Mosquitto a -> String -> Maybe (String, String) -> IO ()
+setTls mosq (nullTermStr -> caFile) userCert =
+  withPtr mosq $ \pMosq -> do
+    (certFile, keyFile) <- case userCert of
+      Just (nullTermStr -> certFile, nullTermStr -> keyFile) ->
+        (,) <$> [C.exp| char* {$bs-ptr:certFile} |]
+            <*> [C.exp| char* {$bs-ptr:keyFile}  |]
+      Nothing ->
+        return (nullPtr, nullPtr)
+    [C.exp|void{
+            mosquitto_tls_set( $(struct mosquitto *pMosq)
+                            , $bs-ptr:caFile
+                            , 0
+                            , $(char* certFile)
+                            , $(char* keyFile)
+                            , 0
+                            )
+    }|]
 
 setReconnectDelay
   :: Mosquitto a -- ^ mosquitto instance
@@ -118,8 +129,32 @@ setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegr
                )
         }|]
 
+setUsernamePassword
+  :: Mosquitto a
+  -> Maybe (String,String)
+  -> IO Int
+setUsernamePassword mosq mUserPwd =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+    case mUserPwd of
+      Just (nullTermStr -> user, nullTermStr -> pwd) ->
+        [C.exp|int{
+                mosquitto_username_pw_set
+                  ( $(struct mosquitto *pMosq)
+                  , $bs-ptr:user
+                  , $bs-ptr:pwd
+                  )
+        }|]
+      Nothing ->
+        [C.exp|int{
+                mosquitto_username_pw_set
+                  ( $(struct mosquitto *pMosq)
+                  , NULL
+                  , NULL
+                  )
+        }|]
+
 connect :: Mosquitto a -> String -> Int -> Int -> IO Int
-connect mosq (C8.pack -> hostname) (fromIntegral -> port) (fromIntegral -> keepAlive) =
+connect mosq (nullTermStr -> hostname) (fromIntegral -> port) (fromIntegral -> keepAlive) =
   fmap fromIntegral <$> withPtr mosq $ \pMosq ->
        [C.exp|int{
                mosquitto_connect( $(struct mosquitto *pMosq)
@@ -219,7 +254,7 @@ setTlsInsecure mosq isInsecure =
         }|]
 
 setWill :: Mosquitto a -> Bool -> Int -> String -> S.ByteString -> IO Int
-setWill mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
+setWill mosq retain (fromIntegral -> qos) (nullTermStr -> topic) payload =
   fmap fromIntegral <$> withPtr mosq $ \pMosq ->
        [C.exp|int{
              mosquitto_will_set
@@ -239,7 +274,7 @@ clearWill mosq = fmap fromIntegral <$> withPtr mosq $ \pMosq ->
         }|]
 
 publish :: Mosquitto a -> Bool -> Int -> String -> S.ByteString -> IO ()
-publish mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
+publish mosq retain (fromIntegral -> qos) (nullTermStr -> topic) payload =
   withPtr mosq $ \pMosq ->
        [C.exp|void{
              mosquitto_publish
@@ -254,7 +289,7 @@ publish mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
         }|]
 
 subscribe :: Mosquitto a -> Int -> String -> IO ()
-subscribe mosq (fromIntegral -> qos) (C8.pack -> topic) =
+subscribe mosq (fromIntegral -> qos) (nullTermStr -> topic) =
   withPtr mosq $ \pMosq ->
        [C.exp|void{
              mosquitto_subscribe
@@ -265,3 +300,12 @@ subscribe mosq (fromIntegral -> qos) (C8.pack -> topic) =
                )
         }|]
 
+strerror :: Int -> IO String
+strerror (fromIntegral -> errno) = do
+  cstr <- [C.exp|const char*{
+              mosquitto_strerror( $(int errno)  )
+            }|]
+  peekCString cstr
+
+nullTermStr :: String -> S.ByteString
+nullTermStr = (<> C8.singleton (chr 0)) . C8.pack
