@@ -20,12 +20,14 @@ library
           Network.Mosquitto.Internal.Types
           Network.Mosquitto.Internal.Inline
           Language.C.Inline.TypeLevel
+          Language.C.Inline.Context.ExtraBS
 
   build-depends:       base >= 4.7 && < 5
                      , inline-c
                      , primitive
                      , containers
                      , bytestring
+                     , template-haskell
   default-language:    Haskell2010
 
   cc-options:          -Wall -O2

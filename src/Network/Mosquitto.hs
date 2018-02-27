@@ -20,7 +20,7 @@ import           Foreign.C.String (peekCString, peekCStringLen)
 
 import qualified Language.C.Inline as C
 import qualified Language.C.Inline.Unsafe as CU
-
+import qualified Language.C.Inline.Context.ExtraBS as C
 import           Language.C.Inline.TypeLevel
 
 import           System.IO.Unsafe (unsafePerformIO)
@@ -33,7 +33,12 @@ import           Network.Mosquitto.Internal.Types
 import           Network.Mosquitto.Internal.Inline
 import           Foreign.Storable
 
-C.context (C.baseCtx <> C.vecCtx <> C.funCtx <> mosquittoCtx)
+C.context (C.baseCtx 
+           <> C.vecCtx 
+           <> C.funCtx
+           <> mosquittoCtx
+           <> C.bsXCtx
+          )
 C.include "<stdio.h>"
 C.include "<mosquitto.h>"
 
