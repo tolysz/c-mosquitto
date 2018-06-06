@@ -20,7 +20,6 @@ import           Foreign.C.String (peekCString, peekCStringLen)
 
 import qualified Language.C.Inline as C
 import qualified Language.C.Inline.Unsafe as CU
-
 import           Language.C.Inline.TypeLevel
 
 import           System.IO.Unsafe (unsafePerformIO)
@@ -72,7 +71,7 @@ newMosquitto :: Bool -> String -> Maybe a -> IO (Mosquitto a)
 newMosquitto clearSession (C8.pack -> userId) _userData = do
    fp <- newForeignPtr_ <$> [C.block|struct mosquitto *{
         struct mosquitto * p =
-          mosquitto_new( $bs-ptr:userId
+          mosquitto_new( $bs-cstr:userId
                        , $(bool clearSession)
                        , 0 // (void * ptrUserData)
                        );
@@ -93,10 +92,23 @@ setTls mosq (C8.pack -> caFile) (C8.pack -> certFile) (C8.pack -> keyFile) =
   withPtr mosq $ \pMosq ->
        [C.exp|void{
                mosquitto_tls_set( $(struct mosquitto *pMosq)
-                                , $bs-ptr:caFile
+                                , $bs-cstr:caFile
                                 , 0
-                                , $bs-ptr:certFile
-                                , $bs-ptr:keyFile
+                                , $bs-cstr:certFile
+                                , $bs-cstr:keyFile
+                                , 0
+                                )
+       }|]
+
+setTlsNoClientCert :: Mosquitto a -> String -> IO ()
+setTlsNoClientCert mosq (C8.pack -> caFile) =
+  withPtr mosq $ \pMosq ->
+       [C.exp|void{
+               mosquitto_tls_set( $(struct mosquitto *pMosq)
+                                , $bs-cstr:caFile
+                                , 0
+                                , 0
+                                , 0
                                 , 0
                                 )
        }|]
@@ -118,12 +130,27 @@ setReconnectDelay mosq  exponential (fromIntegral -> reconnectDelay) (fromIntegr
                )
         }|]
 
+setUsernamePassword
+  :: Mosquitto a -- ^ mosquitto instance
+  -> String      -- ^ username
+  -> String      -- ^ password
+  -> IO Int
+setUsernamePassword mosq (C8.pack -> user) (C8.pack -> pwd) =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
+              mosquitto_username_pw_set
+                ( $(struct mosquitto *pMosq)
+                , $bs-cstr:user
+                , $bs-cstr:pwd
+                )
+       }|]
+
 connect :: Mosquitto a -> String -> Int -> Int -> IO Int
 connect mosq (C8.pack -> hostname) (fromIntegral -> port) (fromIntegral -> keepAlive) =
   fmap fromIntegral <$> withPtr mosq $ \pMosq ->
        [C.exp|int{
                mosquitto_connect( $(struct mosquitto *pMosq)
-                                , $bs-ptr:hostname
+                                , $bs-cstr:hostname
                                 , $(int port)
                                 , $(int keepAlive)
                                 )
@@ -224,7 +251,7 @@ setWill mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
        [C.exp|int{
              mosquitto_will_set
                ( $(struct mosquitto *pMosq)
-               , $bs-ptr:topic
+               , $bs-cstr:topic
                , $bs-len:payload
                , $bs-ptr:payload
                , $(int qos)
@@ -245,7 +272,7 @@ publish mosq retain (fromIntegral -> qos) (C8.pack -> topic) payload =
              mosquitto_publish
                ( $(struct mosquitto *pMosq)
                , 0
-               , $bs-ptr:topic
+               , $bs-cstr:topic
                , $bs-len:payload
                , $bs-ptr:payload
                , $(int qos)
@@ -260,7 +287,7 @@ subscribe mosq (fromIntegral -> qos) (C8.pack -> topic) =
              mosquitto_subscribe
                ( $(struct mosquitto *pMosq)
                , 0
-               , $bs-ptr:topic
+               , $bs-cstr:topic
                , $(int qos)
                )
         }|]

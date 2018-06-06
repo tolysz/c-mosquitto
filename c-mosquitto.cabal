@@ -1,5 +1,5 @@
 name:                c-mosquitto
-version:             0.1.4.0
+version:             0.1.5.0
 synopsis:            Simpe mosquito MQTT binding able to work with the Amazons IoT
 -- description:
 homepage:            https://github.com/tolysz/c-mosquitto#readme

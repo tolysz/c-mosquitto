@@ -18,7 +18,6 @@ import           Foreign.Storable
 
 -- haskell types
 newtype Mosquitto a = Mosquitto { unMosquitto :: ForeignPtr (C (Mosquitto a))}
--- newtype Message = Message { unMessage :: Ptr (C Message)}
 newtype RawMessage = RawMessage { unRawMessage :: Ptr (C RawMessage)}
 
 data Message = Message
