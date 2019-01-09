@@ -49,7 +49,7 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   M.onLog m $ const putStrLn
   M.onConnect m $ \c -> do
            print c
-           M.subscribe m 0 "#"
+--           M.subscribe m 0 "#"
 
   M.onDisconnect m print
   M.onSubscribe m $ curry print
@@ -57,7 +57,7 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   M.connect m server port keepAlive
 
   forkIO $ forever $ do
-    M.publish m False 0 "hello" "bla"
+    -- M.publish m False 0 "hello" "bla"
     threadDelay 5000000
 
   M.loopForever m
