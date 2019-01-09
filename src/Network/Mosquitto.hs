@@ -156,6 +156,13 @@ connect mosq (C8.pack -> hostname) (fromIntegral -> port) (fromIntegral -> keepA
                                 )
              }|]
 
+disconnect :: Mosquitto a -> IO Int
+disconnect mosq =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
+               mosquitto_disconnect( $(struct mosquitto *pMosq) )
+             }|]
+
 onSubscribe :: Mosquitto a -> OnSubscribe -> IO ()
 onSubscribe mosq onSubscribe =  do
   on_subscribe <- mkCOnSubscribe $ \_ _ mid (fromIntegral -> ii) iis ->
