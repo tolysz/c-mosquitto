@@ -67,6 +67,11 @@ version = unsafePerformIO $
  where
    peek' x = fromIntegral <$> peek x
 
+strerror :: Int -> IO (String)
+strerror (fromIntegral -> mosq_errno) = peekCString =<< [C.exp| const char * {
+    mosquitto_strerror($(int mosq_errno))
+  }|]
+
 newMosquitto :: Bool -> String -> Maybe a -> IO (Mosquitto a)
 newMosquitto clearSession (C8.pack -> userId) _userData = do
    fp <- newForeignPtr_ <$> [C.block|struct mosquitto *{
@@ -239,10 +244,15 @@ loop mosq =
         }|]
 
 loopForever :: Mosquitto a -> IO ()
-loopForever mosq =
-  withPtr mosq $ \pMosq ->
-       [C.exp|void{
-             mosquitto_loop_forever($(struct mosquitto *pMosq), -1, 1)
+loopForever mosq = do
+    _ <- loopForeverExt mosq (-1)
+    return()
+
+loopForeverExt :: Mosquitto a -> Int -> IO Int
+loopForeverExt mosq (fromIntegral -> timeout)  =
+  fmap fromIntegral <$> withPtr mosq $ \pMosq ->
+       [C.exp|int{
+             mosquitto_loop_forever($(struct mosquitto *pMosq), $(int timeout), 1)
         }|]
 
 setTlsInsecure :: Mosquitto a -> Bool -> IO ()
