@@ -34,7 +34,7 @@ instance Options MainOptions where
         <*> simpleOption "port" 8883
             "server's port"
         <*> simpleOption "keep-alive" 1200
-            "server's port"
+            "keepalive time in seconds"
 
 main :: IO ()
 main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
@@ -48,18 +48,28 @@ main = runCommand $ \MainOptions{..} args -> M.withMosquittoLibrary $ do
   M.onMessage m print
   M.onLog m $ const putStrLn
   M.onConnect m $ \c -> do
-           print c
---           M.subscribe m 0 "#"
+    print ("onConnect received", c)
+    M.subscribe m 0 "#"
 
   M.onDisconnect m print
   M.onSubscribe m $ curry print
 
-  M.connect m server port keepAlive
+  conRes <- M.connect m server port keepAlive
+  conResStr <- M.strerror(conRes)
+  print ("connect returned", conRes, conResStr)
 
   forkIO $ forever $ do
-    -- M.publish m False 0 "hello" "bla"
+    M.publish m False 0 "hello" "bla"
     threadDelay 5000000
 
-  M.loopForever m
+  forkIO $ do
+    threadDelay 60000000
+    res <- M.disconnect m
+    print ("disconnect returned", res)
+
+  loopRes <- M.loopForeverExt m 0
+  loopResStr <- M.strerror(loopRes)
+  print ("loopForeverExt returned", loopRes, loopResStr)
+
   M.destroyMosquitto m
   print "The end"
