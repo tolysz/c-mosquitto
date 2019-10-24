@@ -1,5 +1,5 @@
 name:                c-mosquitto
-version:             0.1.6.0
+version:             0.1.7.0
 synopsis:            Simpe mosquito MQTT binding able to work with the Amazons IoT
 description:         Simpe mosquito MQTT binding
                      able to work with the Amazons IoT but it should work with other providers
